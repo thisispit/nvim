@@ -1,89 +1,3 @@
---[[
-
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-========                                    .-----.          ========
-========         .----------------------.   | === |          ========
-========         |.-""""""""""""""""""-.|   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||   KICKSTART.NVIM   ||   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||                    ||   |-----|          ========
-========         ||:Tutor              ||   |:::::|          ========
-========         |'-..................-'|   |____o|          ========
-========         `"")----------------(""`   ___________      ========
-========        /::::::::::|  |::::::::::\  \ no mouse \     ========
-========       /:::========|  |==hjkl==:::\  \ required \    ========
-========      '""""""""""""'  '""""""""""""'  '""""""""""'   ========
-========                                                     ========
-=====================================================================
-=====================================================================
-
-What is Kickstart?
-
-  Kickstart.nvim is *not* a distribution.
-
-  Kickstart.nvim is a starting point for your own configuration.
-    The goal is that you can read every line of code, top-to-bottom, understand
-    what your configuration is doing, and modify it to suit your needs.
-
-    Once you've done that, you can start exploring, configuring and tinkering to
-    make Neovim your own! That might mean leaving Kickstart just the way it is for a while
-    or immediately breaking it into modular pieces. It's up to you!
-
-    If you don't know anything about Lua, I recommend taking some time to read through
-    a guide. One possible example which will only take 10-15 minutes:
-      - https://learnxinyminutes.com/docs/lua/
-
-    After understanding a bit more about Lua, you can use `:help lua-guide` as a
-    reference for how Neovim integrates Lua.
-    - :help lua-guide
-    - (or HTML version): https://neovim.io/doc/user/lua-guide.html
-
-Kickstart Guide:
-
-  TODO: The very first thing you should do is to run the command `:Tutor` in Neovim.
-
-    If you don't know what this means, type the following:
-      - <escape key>
-      - :
-      - Tutor
-      - <enter key>
-
-    (If you already know the Neovim basics, you can skip this step.)
-
-  Once you've completed that, you can continue working through **AND READING** the rest
-  of the kickstart init.lua.
-
-  Next, run AND READ `:help`.
-    This will open up a help window with some basic information
-    about reading, navigating and searching the builtin help documentation.
-
-    This should be the first place you go to look when you're stuck or confused
-    with something. It's one of my favorite Neovim features.
-
-    MOST IMPORTANTLY, we provide a keymap "<space>sh" to [s]earch the [h]elp documentation,
-    which is very useful when you're not exactly sure of what you're looking for.
-
-  I have left several `:help X` comments throughout the init.lua
-    These are hints about where to find more information about the relevant settings,
-    plugins or Neovim features used in Kickstart.
-
-   NOTE: Look for lines like this
-
-    Throughout the file. These are for you, the reader, to help you understand what is happening.
-    Feel free to delete them once you know what you're doing, but they should serve as a guide
-    for when you are first encountering a few different constructs in your Neovim config.
-
-If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now! :)
---]]
-
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -91,7 +5,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -102,7 +16,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -151,6 +65,12 @@ vim.o.splitbelow = true
 --   and `:help lua-options-guide`
 vim.o.list = true
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+
+-- ⚡️ Set indentation options
+vim.opt.expandtab = true -- Use spaces instead of tabs
+vim.opt.shiftwidth = 4 -- Number of spaces for indentation
+vim.opt.tabstop = 4 -- Number of spaces that a <Tab> counts for
+vim.opt.softtabstop = 4 -- Number of spaces in a soft tab
 
 -- Preview substitutions live, as you type!
 vim.o.inccommand = 'split'
@@ -351,6 +271,145 @@ require('lazy').setup({
     },
   },
 
+  -- ==================================================
+  -- ⚡️ Session Persistence
+  -- ==================================================
+  {
+    'folke/persistence.nvim',
+    event = 'BufReadPre',
+    config = function()
+      require('persistence').setup {
+        -- This controls which state is saved
+        options = { 'buffers', 'curdir', 'tabpages', 'winsize' },
+        -- You can set dir if needed, otherwise it'll use stdpath("state") .. "/sessions"
+        -- dir = vim.fn.stdpath("state") .. "/sessions",
+      }
+
+      -- ⚡️ KEYMAPS
+      vim.keymap.set('n', '<leader>rr', function()
+        require('persistence').load()
+      end, { desc = 'Restore Session' })
+
+      vim.keymap.set('n', '<leader>rl', function()
+        require('persistence').load { last = true }
+      end, { desc = 'Restore Last Session' })
+
+      vim.keymap.set('n', '<leader>rd', function()
+        require('persistence').stop()
+      end, { desc = 'Stop Session Saving' })
+
+      -- ⚡️ AUTOCMDS for auto save and restore
+      vim.api.nvim_create_autocmd('VimEnter', {
+        callback = function()
+          -- Auto load the session if one is found
+          if vim.fn.argc() == 0 and vim.fn.getcwd() ~= '' then
+            require('persistence').load { last = true }
+          end
+        end,
+      })
+
+      vim.api.nvim_create_autocmd('VimLeavePre', {
+        callback = function()
+          -- Auto save the session when leaving
+          require('persistence').save()
+        end,
+      })
+    end,
+  },
+
+  -- ==================================================
+  -- ⚡️ Dashboard
+  -- ==================================================
+  {
+    'goolord/alpha-nvim',
+    event = 'VimEnter',
+    config = function()
+      local alpha = require 'alpha'
+      local dashboard = require 'alpha.themes.dashboard'
+      local stats = require('lazy').stats()
+      local version = vim.version()
+
+      -- ⚡️ Header
+      dashboard.section.header.val = {
+        '                                                     ',
+        '  ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗',
+        '  ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║',
+        '  ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║',
+        '  ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║',
+        '  ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║',
+        '  ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝',
+        '                                                     ',
+      }
+
+      -- ⚡️ Buttons
+      dashboard.section.buttons.val = {
+        dashboard.button('e', '  New File', ':enew<CR>'),
+        dashboard.button('f', '  Find File', ':Telescope find_files<CR>'),
+        dashboard.button('r', '  Recent', ':Telescope oldfiles<CR>'),
+        dashboard.button('s', '  Settings', ':e $MYVIMRC<CR>'),
+        dashboard.button('q', '  Quit Neovim', ':qa<CR>'),
+      }
+
+      -- ⚡️ Footer with stats
+      dashboard.section.footer.val = {
+        '',
+        '⚡ Loaded ' .. stats.count .. ' plugins in ' .. math.floor(stats.startuptime * 100) / 100 .. 'ms',
+      }
+
+      -- ⚡️ Final Setup
+      alpha.setup(dashboard.config)
+
+      -- ⚡️ No Folding
+      vim.cmd [[autocmd FileType alpha setlocal nofoldenable]]
+    end,
+  },
+  -- -- ==================================================
+  -- ⚡️ Bufferline (Tabs at the top)
+  -- ==================================================
+  {
+    'akinsho/bufferline.nvim',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    version = '*',
+    config = function()
+      require('bufferline').setup {
+        options = {
+          diagnostics = 'nvim_lsp',
+          separator_style = 'slant',
+          always_show_bufferline = true,
+        },
+      }
+      vim.keymap.set('n', '<leader>1', '<Cmd>BufferLineGoToBuffer 1<CR>', { desc = 'Go to buffer 1' })
+      vim.keymap.set('n', '<leader>2', '<Cmd>BufferLineGoToBuffer 2<CR>', { desc = 'Go to buffer 2' })
+      vim.keymap.set('n', '<leader>3', '<Cmd>BufferLineGoToBuffer 3<CR>', { desc = 'Go to buffer 3' })
+      vim.keymap.set('n', '<leader>4', '<Cmd>BufferLineGoToBuffer 4<CR>', { desc = 'Go to buffer 4' })
+    end,
+  },
+  -- ==================================================
+  -- ⚡️ Lualine (Better Statusline)
+  -- ==================================================
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('lualine').setup {
+        options = {
+          theme = 'auto',
+          icons_enabled = true,
+          component_separators = { left = '', right = '' },
+          section_separators = { left = '', right = '' },
+        },
+        sections = {
+          lualine_a = { 'mode' },
+          lualine_b = { 'branch' },
+          lualine_c = { 'filename' },
+          lualine_x = { 'encoding', 'fileformat', 'filetype' },
+          lualine_y = { 'progress' },
+          lualine_z = { 'location' },
+        },
+      }
+    end,
+  },
+
   -- NOTE: Plugins can specify dependencies.
   --
   -- The dependencies are proper plugin specifications as well - anything
@@ -434,8 +493,52 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-      vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+      vim.keymap.set('n', '<leader>.', builtin.oldfiles, { desc = 'Search Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('i', 'jk', '<Esc>', { desc = 'Exit insert mode with jk' })
+
+      -- ⚡️ Terminal bindings
+      vim.keymap.set('t', 'jk', '<C-\\><C-n>', { desc = 'Exit Terminal Mode' })
+
+      -- ⚡️ Open PowerShell in the current window
+      vim.keymap.set('n', '<leader>tc', ':split | terminal pwsh<CR>', { desc = 'PowerShell [T]erminal (split)' })
+
+      -- ⚡️ Open PowerShell in vertical split
+      vim.keymap.set('n', '<leader>tv', ':vsplit | terminal pwsh<CR>', { desc = 'PowerShell [T]erminal (vertical)' })
+
+      -- ⚡️ Open PowerShell in new tab
+      vim.keymap.set('n', '<leader>tt', ':tabnew | terminal pwsh<CR>', { desc = 'PowerShell [T]erminal (new tab)' })
+
+      --  New Buffer
+      vim.keymap.set('n', '<leader>n', ':enew<CR>', { desc = 'New Buffer' })
+      -- New buffer
+      vim.keymap.set('n', '<leader>bn', ':enew<CR>', { desc = 'New Buffer' })
+
+      -- Next buffer
+      vim.keymap.set('n', '<leader>bp', ':bprevious<CR>', { desc = 'Previous Buffer' })
+      vim.keymap.set('n', '<leader>bn', ':bnext<CR>', { desc = 'Next Buffer' })
+
+      -- Close current buffer
+      vim.keymap.set('n', '<leader>x', ':bd<CR>', { desc = '[x]Close Buffer' })
+
+      -- List all buffers
+      vim.keymap.set('n', '<leader>bb', ':ls<CR>', { desc = 'List Buffers' })
+
+      -- Split the current buffer vertically
+      vim.keymap.set('n', '<leader>sv', ':vsplit<CR>', { desc = 'Split buffer vertically' })
+
+      -- Split the current buffer horizontally
+      vim.keymap.set('n', '<leader>sh', ':split<CR>', { desc = 'Split buffer horizontally' })
+
+      --  Remap CapsLock to Escape
+      -- ==================================================
+      vim.keymap.set({ 'n', 'i', 'v' }, '<CapsLock>', '<Esc>', { silent = true })
+
+      -- Keymap for the exp
+      vim.keymap.set('n', '<leader>e', ':Ex<CR>', { desc = 'Open File Explorer' })
+
+      -- 🌳 Leader + e to open netrw in a vertical split
+      vim.keymap.set('n', '<leader>ve', ':Vex<CR>', { desc = 'Open netrw in vertical split' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -875,29 +978,38 @@ require('lazy').setup({
       signature = { enabled = true },
     },
   },
-
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
+  --
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('tokyonight').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --     }
+  --
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could loadNN
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'gruvbox'
+  --   end,
+  -- },
+  --
+  {
+    'ellisonleao/gruvbox.nvim',
+    priority = 1000, -- load it early
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
-      }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.o.background = 'dark' -- or "light" if you prefer
+      vim.cmd [[colorscheme gruvbox]]
     end,
   },
-
+  --
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
